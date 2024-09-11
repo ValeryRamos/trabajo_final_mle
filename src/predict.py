@@ -22,7 +22,7 @@ def score_model(filename, scores):
 
 # Scoring desde el inicio
 def main():
-    df = score_model('scorear.csv','final_score.csv')
+    df = score_model('transform_score.csv','final_score.csv')
     print('Finalizó el Scoring del Modelo')
 
 
