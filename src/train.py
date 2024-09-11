@@ -1,4 +1,3 @@
-
 import pandas as pd
 import xgboost as xgb
 import pickle
@@ -7,7 +6,7 @@ import os
 
 # Cargar la tabla transformada
 def read_file_csv(filename):
-    df = pd.read_csv(os.path.join('../data/processed', filename)).set_index('ID')
+    df = pd.read_csv(os.path.join('../data/processed', filename)).set_index('CustomerId')
     X_train = df.drop(['Exited'],axis=1)
     y_train = df[['Exited']]
     print(filename, ' cargado correctamente')
@@ -23,7 +22,7 @@ def read_file_csv(filename):
 
 # Entrenamiento completo
 def main():
-    read_file_csv('train.csv')
+    read_file_csv('transform_train.csv')
     print('Finalizó el entrenamiento del Modelo')
 
 
