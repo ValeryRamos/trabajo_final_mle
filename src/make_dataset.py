@@ -19,7 +19,7 @@ numeric_transformer = Pipeline(steps=[
 categorical_features = ['Geography', 'Gender', 'HasCrCard', 'IsActiveMember']
 categorical_transformer = Pipeline(steps=[
     ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),  # Imputar valores faltantes
-    ('onehot', OneHotEncoder(handle_unknown='ignore'))  # Codificación One-Hot
+    ('onehot', OneHotEncoder(handle_unknown='ignore', drop='first'))  # Codificación One-Hot
 ])
 
 # Preprocesador combinado
@@ -31,39 +31,62 @@ preprocessor = ColumnTransformer(
 
 # Leemos los archivos csv
 def read_file_csv(filename):
-    df = pd.read_csv(os.path.join('../data/raw/', filename)).set_index('ID')
+    df = pd.read_csv(os.path.join('../data/raw/', filename)).set_index('CustomerId')
     print(filename, 'cargado correctamente')
     return df
 
 # Realizamos la transformación de datos
 def data_preparation(df):
-    # Aplicamos las transformaciones específicas
-    df = preprocessor.fit_transform(df)
-    return pd.DataFrame(df)
+    # Verificar si la columna 'Exited' está presente
+    target_present = 'Exited' in df.columns
+    if target_present:
+        y = df['Exited']  # Mantener la columna 'Exited' como target
+        X = df.drop(columns=['Exited'])  # Eliminar la columna 'Exited' del DataFrame de características
+    else:
+        X = df
+    
+    # Aplicar las transformaciones al DataFrame de características
+    X_transformed = preprocessor.fit_transform(X)
+    
+    # Obtener nombres de columnas resultantes
+    numeric_cols = numeric_features
+    categorical_cols = preprocessor.named_transformers_['cat'].named_steps['onehot'].get_feature_names_out(categorical_features)
+    all_cols = numeric_cols + list(categorical_cols)
+    
+    # Crear el DataFrame con los nombres de columnas y el índice original
+    df_transformed = pd.DataFrame(X_transformed, columns=all_cols, index=X.index)
+    
+    # Volver a añadir la columna del target si está presente
+    if target_present:
+        df_transformed['Exited'] = y
+        df_transformed = df_transformed[['Exited'] + [col for col in df_transformed.columns if col != 'Exited']]  # Asegura que 'Exited' esté al inicio
+    
+    return df_transformed
 
 # Exportamos la matriz de datos con las columnas seleccionadas
-def data_exporting(df, features, filename):
-    dfp = df[features]
-    dfp.to_csv(os.path.join('../data/processed/', filename), index=False)
+def data_exporting(df, filename):
+    df.to_csv(os.path.join('../data/processed/', filename), index=True)
     print(filename, 'exportado correctamente en la carpeta processed')
 
 # Generamos las matrices de datos que se necesitan para la implementación
 def main():
     # Matriz de Entrenamiento
-    df1 = read_file_csv('defaultcc.csv')
+    df1 = read_file_csv('train.csv')
     tdf1 = data_preparation(df1)
-    data_exporting(tdf1, tdf1.columns.tolist() + ['Exited'], 'transform_train.csv')
+    # Incluye 'Exited' al exportar
+    data_exporting(tdf1, 'transform_train.csv')
     
     # Matriz de Validación
-    df2 = read_file_csv('defaultcc_new.csv')
+    df2 = read_file_csv('test.csv')
     tdf2 = data_preparation(df2)
-    data_exporting(tdf2, tdf2.columns.tolist() + ['Existed'], 'transform_val.csv')
+    # No incluye 'Exited' al exportar
+    data_exporting(tdf2, 'transform_test.csv')
     
     # Matriz de Scoring
-    df3 = read_file_csv('defaultcc_score.csv')
+    df3 = read_file_csv('scorear.csv')
     tdf3 = data_preparation(df3)
-    data_exporting(tdf3, tdf3.columns.tolist(), 'transform_score.csv')
-
+    # No incluye 'Exited' al exportar
+    data_exporting(tdf3, 'transform_score.csv')
 
 if __name__ == "__main__":
     main()
