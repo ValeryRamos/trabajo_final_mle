@@ -8,11 +8,11 @@ import os
 # Cargar la tabla transformada
 def read_file_csv(filename):
     df = pd.read_csv(os.path.join('../data/processed', filename)).set_index('ID')
-    X_train = df.drop(['DEFAULT'],axis=1)
-    y_train = df[['DEFAULT']]
+    X_train = df.drop(['Exited'],axis=1)
+    y_train = df[['Exited']]
     print(filename, ' cargado correctamente')
     # Entrenamos el modelo con toda la muestra
-    xgb_mod=xgb.XGBClassifier(max_depth=2, n_estimators=50, objective='binary:logistic', seed=0, silent=True, subsample=.8)
+    xgb_mod=xgb.XGBClassifier(max_depth=3, n_estimators=50, objective='binary:logistic', seed=42, silent=True, subsample=.8)
     xgb_mod.fit(X_train, y_train)
     print('Modelo entrenado')
     # Guardamos el modelo entrenado para usarlo en produccion
