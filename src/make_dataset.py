@@ -1,59 +1,92 @@
-import pandas as pd
+mport pandas as pd
 import numpy as np
-import os
 
-
-# Leemos los archivos csv
 def read_file_csv(filename):
-    df = pd.read_csv(os.path.join('../data/raw/', filename)).set_index('ID')
-    print(filename, ' cargado correctamente')
+    """Función para leer el archivo CSV y cargarlo en un DataFrame"""
+    df = pd.read_csv(filename)
+    print(f'{filename} cargado correctamente')
     return df
 
 
-# Realizamos la transformación de datos
-def data_preparation(df):
-    # Convertimos SEX en dummy
-    df.SEX = df.SEX-1
-    # Generar variables Cuantitativas transformadas
-    LIST_BILL = ['BILL_AMT1','BILL_AMT2','BILL_AMT3','BILL_AMT4','BILL_AMT5','BILL_AMT6']
-    # Reemplazamos los valores -1 por 0
-    for i in LIST_BILL:
-     df.loc[df.loc[:,i] == -1,i] = 0
-    # Calculamos el logaritmo para cada variable numérica continua
-    df['LOG_BILL_AMT1'] = round(np.log1p(df['BILL_AMT1']),5)
-    df['LOG_BILL_AMT2'] = round(np.log1p(df['BILL_AMT2']),5)
-    df['LOG_BILL_AMT3'] = round(np.log1p(df['BILL_AMT3']),5)
-    df['LOG_BILL_AMT4'] = round(np.log1p(df['BILL_AMT4']),5)
-    df['LOG_BILL_AMT5'] = round(np.log1p(df['BILL_AMT5']),5)
-    df['LOG_BILL_AMT6'] = round(np.log1p(df['BILL_AMT6']),5)
-    df['LOG_PAY_AMT1'] = round(np.log1p(df['PAY_AMT1']),5)
-    df['LOG_PAY_AMT2'] = round(np.log1p(df['PAY_AMT2']),5)
-    df['LOG_PAY_AMT3'] = round(np.log1p(df['PAY_AMT3']),5)
-    df['LOG_PAY_AMT4'] = round(np.log1p(df['PAY_AMT4']),5)
-    df['LOG_PAY_AMT5'] = round(np.log1p(df['PAY_AMT5']),5)
-    df['LOG_PAY_AMT6'] = round(np.log1p(df['PAY_AMT6']),5)
-    # Generamos listas de las variables para utilizarlas en los cálculos agrupados
-    LIST_PAY  = ['PAY_1','PAY_2','PAY_3','PAY_4','PAY_5','PAY_6']
-    LIST_BILL = ['LOG_BILL_AMT1','LOG_BILL_AMT2','LOG_BILL_AMT3','LOG_BILL_AMT4','LOG_BILL_AMT5','LOG_BILL_AMT6']
-    LIST_PAMT = ['LOG_PAY_AMT1','LOG_PAY_AMT2','LOG_PAY_AMT3','LOG_PAY_AMT4','LOG_PAY_AMT5','LOG_PAY_AMT6']
-    # Reemplazar los valores faltantes con cero
-    for i in LIST_BILL:
-     df.loc[df.loc[:,i].isnull(),i] = 0
-    # Creamos otras variables derivadas
-    df['STD_PAY_TOT']    = df[LIST_PAY].std(axis=1)
-    df['CANT_PAY_MAY0']  = df[LIST_PAY].gt(0).sum(axis=1)
-    df['AVG_LBILL_TOT']  = df[LIST_BILL].mean(axis=1)
-    df['STD_LBILL_TOT']  = df[LIST_BILL].std(axis=1)
-    df['CV_LBILL_TOT']   =  df['STD_LBILL_TOT']/(df['AVG_LBILL_TOT']+1)
-    df['AVG_LPAY_TOT']   = df[LIST_PAMT].mean(axis=1)
-    df['STD_LPAY_TOT']   = df[LIST_PAMT].std(axis=1)
-    df['CV_LPAY_TOT']    =  df['STD_LPAY_TOT']/(df['AVG_LPAY_TOT']+1)
-    df['AVG_EXP_1'] = (((df['BILL_AMT5'] - (df['BILL_AMT6'] - df['PAY_AMT5'])) +
-                     (df['BILL_AMT4'] - (df['BILL_AMT5'] - df['PAY_AMT4'])) +
-                     (df['BILL_AMT3'] - (df['BILL_AMT4'] - df['PAY_AMT3'])) +
-                     (df['BILL_AMT2'] - (df['BILL_AMT3'] - df['PAY_AMT2'])) +
-                     (df['BILL_AMT1'] - (df['BILL_AMT2'] - df['PAY_AMT1']))) / 5) / df['LIMIT_BAL']
-    print('Transformación de datos completa')
+def transform_categorical(df):
+    """
+    Transforma variables categóricas según el diccionario de datos.
+    Convierte categorías en valores numéricos o aplica codificación.
+    """
+    # MSSubClass: mapeo a las descripciones de tipo de vivienda
+    MSSubClass_map = {
+        20: '1-STORY 1946 & NEWER ALL STYLES', 30: '1-STORY 1945 & OLDER',
+        40: '1-STORY W/FINISHED ATTIC ALL AGES', 45: '1-1/2 STORY - UNFINISHED ALL AGES',
+        50: '1-1/2 STORY FINISHED ALL AGES', 60: '2-STORY 1946 & NEWER',
+        70: '2-STORY 1945 & OLDER', 75: '2-1/2 STORY ALL AGES',
+        80: 'SPLIT OR MULTI-LEVEL', 85: 'SPLIT FOYER', 90: 'DUPLEX - ALL STYLES AND AGES',
+        120: '1-STORY PUD 1946 & NEWER', 150: '1-1/2 STORY PUD ALL AGES',
+        160: '2-STORY PUD 1946 & NEWER', 180: 'PUD MULTILEVEL',
+        190: '2 FAMILY CONVERSION ALL STYLES AND AGES'
+    }
+    df['MSSubClass'] = df['MSSubClass'].map(MSSubClass_map)
+
+    # MSZoning: mapeo a sus valores categóricos
+    MSZoning_map = {
+        'A': 'Agriculture', 'C': 'Commercial', 'FV': 'Floating Village Residential',
+        'I': 'Industrial', 'RH': 'Residential High Density', 'RL': 'Residential Low Density',
+        'RP': 'Residential Low Density Park', 'RM': 'Residential Medium Density'
+    }
+    df['MSZoning'] = df['MSZoning'].map(MSZoning_map)
+
+    # Street: Pave or Grvl
+    Street_map = {'Grvl': 'Gravel', 'Pave': 'Paved'}
+    df['Street'] = df['Street'].map(Street_map)
+
+    # Alley: Convertimos 'NA' en una categoría 'No Alley Access'
+    Alley_map = {'Grvl': 'Gravel', 'Pave': 'Paved', 'NA': 'No alley access'}
+    df['Alley'] = df['Alley'].fillna('NA').map(Alley_map)
+
+    # LotShape
+    LotShape_map = {'Reg': 'Regular', 'IR1': 'Slightly irregular', 'IR2': 'Moderately Irregular', 'IR3': 'Irregular'}
+    df['LotShape'] = df['LotShape'].map(LotShape_map)
+
+    # LotConfig
+    LotConfig_map = {'Inside': 'Inside', 'Corner': 'Corner', 'CulDSac': 'Cul-de-sac', 'FR2': 'Frontage 2 sides', 'FR3': 'Frontage 3 sides'}
+    df['LotConfig'] = df['LotConfig'].map(LotConfig_map)
+
+    # LandContour
+    LandContour_map = {'Lvl': 'Level', 'Bnk': 'Banked', 'HLS': 'Hillside', 'Low': 'Depression'}
+    df['LandContour'] = df['LandContour'].map(LandContour_map)
+
+    # Utilities
+    Utilities_map = {'AllPub': 'All public utilities', 'NoSewr': 'No Sewer', 'NoSeWa': 'No Sewer or Water', 'ELO': 'Electricity Only'}
+    df['Utilities'] = df['Utilities'].map(Utilities_map)
+
+    return df
+
+
+def handle_missing_values(df):
+    """Maneja los valores faltantes o 'NA' en el dataset"""
+    # Transformamos 'NA' en valores categóricos donde tiene sentido
+    df['Alley'] = df['Alley'].fillna('NA')
+    df['BsmtQual'] = df['BsmtQual'].fillna('NA')
+    df['FireplaceQu'] = df['FireplaceQu'].fillna('NA')
+    df['GarageFinish'] = df['GarageFinish'].fillna('NA')
+    
+    # Imputamos valores faltantes en columnas numéricas como LotFrontage
+    df['LotFrontage'] = df['LotFrontage'].fillna(df['LotFrontage'].mean())
+
+    return df
+
+
+def data_preparation(filename):
+    """Función principal para la preparación de los datos"""
+    # Cargamos el dataset
+    df = read_file_csv(filename)
+
+    # Mapeamos las columnas categóricas a valores legibles
+    df = transform_categorical(df)
+
+    # Manejo de valores faltantes
+    df = handle_missing_values(df)
+
+    # Devolvemos el dataframe limpio
     return df
 
 
@@ -68,17 +101,20 @@ def data_exporting(df, features, filename):
 
 def main():
     # Matriz de Entrenamiento
-    df1 = read_file_csv('defaultcc.csv')
+    df1 = read_file_csv('train.csv')
     tdf1 = data_preparation(df1)
-    data_exporting(tdf1, ['SEX','PAY_1','AGE','LIMIT_BAL','CV_LPAY_TOT','CV_LBILL_TOT','CANT_PAY_MAY0','BILL_AMT1','LOG_BILL_AMT1','AVG_LPAY_TOT','STD_PAY_TOT','AVG_EXP_1','DEFAULT'],'credit_train.csv')
+    featuresdf1 = tdf1.columns
+    data_exporting(tdf1,featuresdf1 ,'transform_train.csv')
     # Matriz de Validación
-    df2 = read_file_csv('defaultcc_new.csv')
+    df2 = read_file_csv('test.csv')
     tdf2 = data_preparation(df2)
-    data_exporting(tdf2, ['SEX','PAY_1','AGE','LIMIT_BAL','CV_LPAY_TOT','CV_LBILL_TOT','CANT_PAY_MAY0','BILL_AMT1','LOG_BILL_AMT1','AVG_LPAY_TOT','STD_PAY_TOT','AVG_EXP_1','DEFAULT'],'credit_val.csv')
+    featuresdf2 = tdf2.columns
+    data_exporting(tdf2,featuresdf2 ,'transform_val.csv')
     # Matriz de Scoring
-    df3 = read_file_csv('defaultcc_score.csv')
+    df3 = read_file_csv('scorear.csv')
     tdf3 = data_preparation(df3)
-    data_exporting(tdf3, ['SEX','PAY_1','AGE','LIMIT_BAL','CV_LPAY_TOT','CV_LBILL_TOT','CANT_PAY_MAY0','BILL_AMT1','LOG_BILL_AMT1','AVG_LPAY_TOT','STD_PAY_TOT','AVG_EXP_1'],'credit_score.csv')
+    featuresdf3 = tdf3.columns
+    data_exporting(tdf3,featuresdf3 ,'transform_score.csv')
     
 if __name__ == "__main__":
     main()
