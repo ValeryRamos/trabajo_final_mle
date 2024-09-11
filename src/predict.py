@@ -15,14 +15,14 @@ def score_model(filename, scores):
     print('Modelo importado correctamente')
     # Predecimos sobre el set de datos de Scoring    
     res = model.predict(df).reshape(-1,1)
-    pred = pd.DataFrame(res, columns=['PREDICT'])
+    pred = pd.DataFrame(res, columns=['Exited'])
     pred.to_csv(os.path.join('../data/scores/', scores))
     print(scores, 'exportado correctamente en la carpeta scores')
 
 
 # Scoring desde el inicio
 def main():
-    df = score_model('credit_score.csv','final_score.csv')
+    df = score_model('scorear.csv','final_score.csv')
     print('Finalizó el Scoring del Modelo')
 
 
